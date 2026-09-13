@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: vinifind_db
+    environment:
+      POSTGRES_USER: vinifind_user
+      POSTGRES_PASSWORD: vinifind_password
+      POSTGRES_DB: vinifind
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: vinifind_mq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"   # Основной порт для общения C# и Python с брокером
+      - "15672:15672" # Порт для веб-интерфейса управления RabbitMQ
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
