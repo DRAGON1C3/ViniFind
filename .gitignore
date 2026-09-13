@@ -1,0 +1,37 @@
+# =========================
+# Базовые исключения ОС и IDE
+# =========================
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.user
+
+# =========================
+# Фронтенд: Flutter / Dart
+# =========================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+.pub-cache/
+
+# =========================
+# Бэкенд Ядро: C# / .NET
+# =========================
+bin/
+obj/
+appsettings.Development.json
+
+# =========================
+# ML и Data Science: Python
+# =========================
+__pycache__/
+*.pyc
+venv/
+.env
+
+# =========================
+# Инфраструктура
+# =========================
+postgres_data/
