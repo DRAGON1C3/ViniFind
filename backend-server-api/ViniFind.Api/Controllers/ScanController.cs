@@ -10,11 +10,12 @@ namespace ViniFind.Api.Controllers
     {
         private readonly ILogger<ScanController> _logger;
         private readonly IRabbitMqProducer _rabbitMqProducer;
-
-        public ScanController(ILogger<ScanController> logger, IRabbitMqProducer rabbitMqProducer)
+        private readonly IScanTaskStore _scanTaskStore;
+        public ScanController(ILogger<ScanController> logger, IRabbitMqProducer rabbitMqProducer, IScanTaskStore scanTaskStore)
         {
             _logger = logger;
             _rabbitMqProducer = rabbitMqProducer;
+            _scanTaskStore = scanTaskStore;
         }
 
         [HttpPost]
@@ -30,6 +31,7 @@ namespace ViniFind.Api.Controllers
             }
 
             var taskId = Guid.NewGuid().ToString();
+            _scanTaskStore.Create(taskId);
 
             using var memoryStream = new MemoryStream();
             await file.CopyToAsync(memoryStream);
@@ -43,6 +45,21 @@ namespace ViniFind.Api.Controllers
                 status = "Queued",
                 message = "Задача успешно поставлена в очередь на обработку."
             });
+        }
+
+        [HttpGet("{taskId}")]
+        public IActionResult GetScanStatus(string taskId)
+        {
+            if (!_scanTaskStore.TryGet(taskId, out var task) || task is null)
+            {
+                return NotFound(new
+                {
+                    taskId,
+                    error = "Задача не найдена."
+                });
+            }
+
+            return Ok(task);
         }
     }
 }

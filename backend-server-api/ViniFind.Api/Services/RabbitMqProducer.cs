@@ -14,16 +14,24 @@ namespace ViniFind.Api.Services
         }
         public async Task PublishScanTaskAsync(string taskId, string fileName, byte[] imageBytes)
         {
-            var host = _configuration["RabbitMq:Host"] ?? "localhost";
-            var port = int.Parse(_configuration["RabbitMQ:Port"] ?? "5672");
-            var queueName = _configuration["RabbitMq:QueueName"] ?? "wine_scan_tasks";
+            var rabbitMqSection = _configuration.GetSection("RabbitMq");
+
+            var host = rabbitMqSection["Host"] ?? "localhost";
+            var queueName = rabbitMqSection["QueueName"] ?? "wine_scan_tasks";
+            var username = rabbitMqSection["Username"] ?? "guest";
+            var password = rabbitMqSection["Password"] ?? "guest";
+
+            if (!int.TryParse(rabbitMqSection["Port"], out var port))
+            {
+                port = 5672; // Default RabbitMQ port
+            }
 
             var factory = new ConnectionFactory
             {
                 HostName = host,
                 Port = port,
-                UserName = _configuration["RabbitMq:Username"] ?? "guest",
-                Password = _configuration["RabbitMq:Password"] ?? "guest"
+                UserName = username,
+                Password = password
             };
 
             using var connection = await factory.CreateConnectionAsync();
