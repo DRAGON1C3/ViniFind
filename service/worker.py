@@ -162,8 +162,8 @@ async def main() -> None:
         await channel.set_qos(prefetch_count=1)
 
         input_queue = await channel.declare_queue(
-        INPUT_QUEUE,
-        durable=True,
+            INPUT_QUEUE,
+            durable=True,
         )
 
         await channel.declare_queue(
