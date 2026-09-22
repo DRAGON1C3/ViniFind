@@ -65,5 +65,20 @@ namespace ViniFind.Api.Services
                 return true;
             }
         }
+
+        public bool TrySetFailed(string taskId, string error)
+        {
+            if (!_tasks.TryGetValue(taskId, out var task))
+            {
+                return false;
+            }
+            lock (task)
+            {
+                task.Status = ScanTaskStatus.Failed;
+                task.Error = error;
+                task.CompletedAtUtc = DateTime.UtcNow;
+                return true;
+            }
+        }
     }
 }

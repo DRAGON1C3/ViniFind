@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.IO.Pipes;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ViniFind.Api.Models;
@@ -23,16 +24,62 @@ public sealed class RabbitMqResultConsumer : BackgroundService
         _logger = logger;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(
+        CancellationToken stoppingToken)
     {
-        var rabbitMqSection = _configuration.GetSection("RabbitMq");
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await RunConsumerSessionAsync(stoppingToken);
+            }
+            catch (OperationCanceledException)
+                when (stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation(
+                     "Остановка консьюмера RabbitMQ.");
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Ошибка в консьюмере RabbitMQ. Перезапуск через 5 секунд.");
+            }
+
+            if (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(
+                        TimeSpan.FromSeconds(5),
+                        stoppingToken);
+                }
+                catch (OperationCanceledException)
+                    when (stoppingToken.IsCancellationRequested)
+                {
+                    _logger.LogInformation(
+                        "Ожидание переподключения отменено.");
+                }
+            }
+        }
+    }
+
+    private async Task RunConsumerSessionAsync(
+        CancellationToken stoppingToken)
+    {
+        var rabbitMqSection = _configuration.GetSection("RabbitMQ");
 
         var host = rabbitMqSection["Host"] ?? "localhost";
+
         var username = rabbitMqSection["Username"] ?? "guest";
+
         var password = rabbitMqSection["Password"] ?? "guest";
+
         var queueName = rabbitMqSection["ResultQueueName"] ?? "wine_scan_results";
 
-        if (!int.TryParse(rabbitMqSection["Port"], out var port))
+        if (!int.TryParse(
+            rabbitMqSection["Port"],
+            out var port))
         {
             port = 5672;
         }
@@ -45,57 +92,51 @@ public sealed class RabbitMqResultConsumer : BackgroundService
             Password = password
         };
 
-        try
+        await using var connection = await factory.CreateConnectionAsync(stoppingToken);
+        await using var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
+        await channel.QueueDeclareAsync(
+            queue: queueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: null,
+            cancellationToken: stoppingToken);
+        await channel.BasicQosAsync(
+            prefetchSize: 0,
+            prefetchCount: 1,
+            global: false,
+            cancellationToken: stoppingToken);
+        var consumer = new AsyncEventingBasicConsumer(channel);
+        consumer.ReceivedAsync += async (_, EventArgs) =>
         {
-            await using var connection =
-                await factory.CreateConnectionAsync(stoppingToken);
+            await ProcessMessageAsync(channel, EventArgs);
+        };
 
-            await using var channel =
-                await connection.CreateChannelAsync(cancellationToken: stoppingToken);
+        await channel.BasicConsumeAsync(
+            queue: queueName,
+            autoAck: false,
+            consumer: consumer,
+            cancellationToken: stoppingToken);
 
-            await channel.QueueDeclareAsync(
-                queue: queueName,
-                durable: true,
-                exclusive: false,
-                autoDelete: false,
-                arguments: null,
-                cancellationToken: stoppingToken);
+        _logger.LogInformation(
+            "RabbitMQ consumer слушает очередь {QueueName}.",
+            queueName);
 
-            await channel.BasicQosAsync(
-                prefetchSize: 0,
-                prefetchCount: 1,
-                global: false,
-                cancellationToken: stoppingToken);
+        var connectionClosed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var consumer = new AsyncEventingBasicConsumer(channel);
-
-            consumer.ReceivedAsync += async (_, eventArgs) =>
-            {
-                await ProcessMessageAsync(channel, eventArgs);
-            };
-
-            await channel.BasicConsumeAsync(
-                queue: queueName,
-                autoAck: false,
-                consumer: consumer,
-                cancellationToken: stoppingToken);
-
-            _logger.LogInformation(
-                "RabbitMQ consumer слушает очередь {QueueName}",
-                queueName);
-
-            await Task.Delay(Timeout.Infinite, stoppingToken);
-        }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        connection.ConnectionShutdownAsync += (_, _) =>
         {
-            _logger.LogInformation("RabbitMQ consumer остановлен.");
-        }
-        catch (Exception exception)
-        {
-            _logger.LogCritical(
-                exception,
-                "RabbitMQ consumer завершился из-за ошибки.");
-        }
+            connectionClosed.TrySetResult(true);
+            return Task.CompletedTask;
+        };
+
+        await Task.WhenAny(
+            connectionClosed.Task,
+            Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken));
+
+        stoppingToken.ThrowIfCancellationRequested();
+        throw new InvalidOperationException(
+            "Соедение с RabbitMQ было закрыто.");
     }
 
     private async Task ProcessMessageAsync(
