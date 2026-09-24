@@ -1,0 +1,6 @@
+transformers>=4.45,<5
+safetensors>=0.4
+tqdm>=4.66
+rapidfuzz>=3.9
+sentencepiece>=0.2
+protobuf>=5

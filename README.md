@@ -23,6 +23,18 @@ python service/prepare_dataset.py \
 `manifest.csv`, `unmatched_slugs.csv`, `ambiguous_images.csv` и `summary.txt`.
 Папки `test_real` и `eval` нельзя добавлять в обучающий набор.
 
+Для локального visual-retrieval baseline нужны зависимости из
+`requirements-ml-training.txt`. На видеокарте с 4 ГБ VRAM используется
+`google/siglip-base-patch16-224` в режиме inference; полноценное обучение
+большой SigLIP-модели на такой видеокарте нецелесообразно:
+
+```bash
+python -m pip install -r requirements-ml-training.txt
+python service/build_visual_index.py \
+  --dataset-root D:/Датасет/prepared_dataset \
+  --output D:/Датасет/prepared_dataset/visual_index.pt
+```
+
 Для поиска кандидатов среди изображений для ненайденных slug используется отдельный
 скрипт. Он не изменяет train, а создаёт top-5 кандидатов для ручной проверки:
 
