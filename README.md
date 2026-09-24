@@ -22,3 +22,17 @@ python service/prepare_dataset.py \
 В результате создаются `train/images`, `test_real`, `eval/queries`,
 `manifest.csv`, `unmatched_slugs.csv`, `ambiguous_images.csv` и `summary.txt`.
 Папки `test_real` и `eval` нельзя добавлять в обучающий набор.
+
+Для поиска кандидатов среди изображений для ненайденных slug используется отдельный
+скрипт. Он не изменяет train, а создаёт top-5 кандидатов для ручной проверки:
+
+```bash
+python service/find_dataset_candidates.py \
+  --input-root D:/Датасет/Датасет \
+  --prepared-root D:/Датасет/prepared_dataset \
+  --output D:/Датасет/prepared_dataset/candidates.csv
+```
+
+В `candidates.csv` есть score, совпавшие токены и решение
+`manual_review`/`weak_candidate`. Автоматически переносить кандидатов в train
+нельзя без проверки: один slug может иметь несколько очень похожих вин.
