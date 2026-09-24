@@ -21,7 +21,7 @@ from pathlib import Path
 IMAGE_EXTENSIONS = {
     ".jpg", ".jpeg", ".jfif", ".png", ".webp", ".tif", ".tiff", ".heic"
 }
-VARIANT_PREFIXES = ("thumbnail_", "small_", "medium_")
+VARIANT_PREFIXES = ("thumbnail_", "small_", "medium_", "large_")
 EXCLUDED_PARTS = {"eval", "реальные фото", "__macosx"}
 GENERIC_TOKENS = {
     "vino", "wine", "beloe", "belyy", "belaya", "krasnoe", "krasnyy",
@@ -45,6 +45,10 @@ def tokens(value: str) -> set[str]:
 
 def normalize(value: str) -> str:
     return "".join(sorted(tokens(value)))
+
+
+def numeric_tokens(value: str) -> set[str]:
+    return set(re.findall(r"\d+(?:[.,]\d+)?", value.lower()))
 
 
 def image_files(root: Path) -> list[Path]:
@@ -130,7 +134,7 @@ def score_candidate(
 
 
 def decision(score: float, margin: float) -> str:
-    if score >= 0.92 and margin >= 0.08:
+    if score >= 0.85 and margin >= 0.08:
         return "auto_candidate"
     if score >= 0.75:
         return "manual_review"
@@ -148,8 +152,13 @@ def write_candidates(
     rows: list[dict[str, str]] = []
     for slug in unmatched:
         slug_tokens, metadata_tokens = profile(slug, catalog[slug])
+        required_numbers = numeric_tokens(slug)
         ranked = []
         for image in images:
+            # A numeric suffix is part of the product identity: 12 and 125
+            # must not be treated as the same wine.
+            if not required_numbers.issubset(numeric_tokens(image.stem)):
+                continue
             score, overlap_count, sequence, overlap = score_candidate(
                 slug_tokens, metadata_tokens, slug, image
             )
@@ -175,6 +184,7 @@ def write_candidates(
                 "overlap_count": str(overlap_count),
                 "sequence_score": f"{sequence:.4f}",
                 "matched_tokens": overlap,
+                "numeric_compatible": "true",
                 "decision": decision(score, margin),
             })
 
@@ -182,7 +192,7 @@ def write_candidates(
     fields = [
         "slug", "name", "winery", "rank", "candidate_path", "score",
         "top1_margin", "overlap_count", "sequence_score", "matched_tokens",
-        "decision",
+        "numeric_compatible", "decision",
     ]
     with output.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
