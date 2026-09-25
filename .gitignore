@@ -33,3 +33,6 @@ postgres_data/
 # Local Copilot worktrees
 copilot-worktrees/
 ViniFind/
+
+# Local ML models and indexes
+models/
