@@ -5,3 +5,49 @@ ViniFind — Умный винный сканерВстраиваемый инт
 🚀 Быстрый старт (Локальная разработка)Запуск инфраструктуры (БД и Очереди) осуществляется через Docker-контейнеры. Выполните команду docker-compose up -d в корне проекта.  Для тестирования взаимодействия между фронтендом и бэкендом используется статический домен ngrok, который делает локальный C#-сервер доступным для команды 24/7.  
 
 🌳 Правила работы с репозиторием (Git Workflow)Разработка ведется строго по модели Feature Branch Workflow:Ветка main: Содержит только стабильный и полностью рабочий код приложения ViniFind. Прямые пуши в эту ветку запрещены.Ветки задач (Feature Branches): Каждая новая задача выполняется в отдельной временной ветке, созданной от main. Название ветки должно начинаться с префикса feature/ (например, feature/scanner-ui или feature/parser).Слияние (Pull Requests): Готовый код сливается в основу только через запросы на слияние (Pull Request). Ветка удаляется после одобрения и успешного объединения.
+
+## Подготовка ML-датасета
+
+Скрипт `service/prepare_dataset.py` связывает CSV-каталог с изображениями Strapi по
+нормализованному `Slug`, исключает `thumbnail`, `small`, `medium` и дубликаты,
+а также отдельно копирует реальные фотографии и evaluation-запросы:
+
+```bash
+python service/prepare_dataset.py \
+  --input-root D:/Датасет/Датасет \
+  --output-root D:/Датасет/prepared_dataset \
+  --link-mode hardlink
+```
+
+В результате создаются `train/images`, `test_real`, `eval/queries`,
+`manifest.csv`, `unmatched_slugs.csv`, `ambiguous_images.csv` и `summary.txt`.
+Папки `test_real` и `eval` нельзя добавлять в обучающий набор.
+
+Для локального visual-retrieval baseline нужны зависимости из
+`requirements-ml-training.txt`. На видеокарте с 4 ГБ VRAM используется
+`google/siglip-base-patch16-224` в режиме inference; полноценное обучение
+большой SigLIP-модели на такой видеокарте нецелесообразно:
+
+```bash
+python -m pip install -r requirements-ml-training.txt
+python service/build_visual_index.py \
+  --dataset-root D:/Датасет/prepared_dataset \
+  --output D:/Датасет/prepared_dataset/visual_index.pt
+```
+
+Для поиска кандидатов среди изображений для ненайденных slug используется отдельный
+скрипт. Он не изменяет train, а создаёт top-5 кандидатов для ручной проверки:
+
+```bash
+python service/find_dataset_candidates.py \
+  --input-root D:/Датасет/Датасет \
+  --prepared-root D:/Датасет/prepared_dataset \
+  --output D:/Датасет/prepared_dataset/candidates.csv
+```
+
+В `candidates.csv` есть score, совпавшие токены и решение
+`manual_review`/`weak_candidate`. Автоматически переносить кандидатов в train
+нельзя без проверки: один slug может иметь несколько очень похожих вин.
+Числовые части slug считаются обязательными: например, кандидат с `125` не
+подходит для slug с `12`. Префикс `large_` также исключён из автоматического
+поиска, чтобы выбирать оригинал без размерного префикса.
