@@ -16,7 +16,6 @@ class SvoeVinoApp extends StatelessWidget {
       title: 'Своё Вино',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // Оригинальный светлый фон сайта
         scaffoldBackgroundColor: const Color(0xFFFEFDFA),
         primaryColor: const Color(0xFF8B3A3D),
         textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme),
@@ -24,6 +23,8 @@ class SvoeVinoApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF8B3A3D),
             foregroundColor: Colors.white,
+            elevation: 4,
+            shadowColor: Colors.black.withOpacity(0.3),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -44,6 +45,7 @@ class ScannerScreen extends StatefulWidget {
 
 class _ScannerScreenState extends State<ScannerScreen> {
   bool _isBottomSheetOpen = false;
+  bool _isReverseSearch = false; // Переключатель реверсивного поиска
 
   final List<String> wineImages = [
     'assets/zakat_denisov_vajneri_no_bg_preview_carve_photos_1_6ae9baa13d.webp',
@@ -82,9 +84,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Основной контент страницы со скроллом
           SingleChildScrollView(
-            // Отступ сверху (110.0) нужен, чтобы контент не прятался под фиксированной шапкой
             padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 110.0, bottom: 24.0),
             child: Center(
               child: ConstrainedBox(
@@ -97,23 +97,78 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       style: GoogleFonts.playfairDisplay(fontSize: 42, color: const Color(0xFF1E293B)),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Сфотографируйте этикетку Российского\nвина или загрузите фото, чтобы найти\nего',
+                    Text(
+                      _isReverseSearch
+                          ? 'Сфотографируйте блюдо\nчтобы ИИ подобрал идеальное вино'
+                          : 'Сфотографируйте этикетку Российского\nвина или загрузите фото, чтобы найти\nего',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Color(0xFF333333), height: 1.4),
+                      style: const TextStyle(fontSize: 16, color: Color(0xFF333333), height: 1.4),
                     ),
                     const SizedBox(height: 40),
+
 
                     Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFDF9ED),
-                        borderRadius: BorderRadius.circular(24),
+                          color: const Color(0xFFFDF9ED),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            )
+                          ]
                       ),
                       child: Column(
                         children: [
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                  'Поиск вина',
+                                  style: TextStyle(
+                                      color: !_isReverseSearch ? const Color(0xFF1E293B) : Colors.grey,
+                                      fontWeight: !_isReverseSearch ? FontWeight.w600 : FontWeight.normal
+                                  )
+                              ),
+                              const SizedBox(width: 12),
+                              GestureDetector(
+                                onTap: () => setState(() => _isReverseSearch = !_isReverseSearch),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 50,
+                                  height: 26,
+                                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFD3AEAE), // Бледный бордовый фон
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                  alignment: _isReverseSearch ? Alignment.centerRight : Alignment.centerLeft,
+                                  child: Container(
+                                    width: 22,
+                                    height: 22,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF8B3A3D),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                  'Подбор к блюду',
+                                  style: TextStyle(
+                                      color: _isReverseSearch ? const Color(0xFF8B3A3D) : Colors.grey,
+                                      fontWeight: _isReverseSearch ? FontWeight.w600 : FontWeight.normal
+                                  )
+                              ),
+                            ],
+                          ),
+
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 30.0),
+                            padding: const EdgeInsets.symmetric(vertical: 24.0),
                             child: SvgPicture.asset('assets/scanner.svg', height: 120),
                           ),
                           SizedBox(
@@ -197,7 +252,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ),
 
-          // Фиксированная "плавающая" шапка (Header)
           Positioned(
             top: 24,
             left: 0,
@@ -214,7 +268,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                         decoration: const BoxDecoration(
-                          color: Color(0x4DEFDBC6), // Точный цвет и прозрачность из CSS
+                          color: Color(0x4DEFDBC6),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -224,7 +278,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
                               children: [
                                 const Icon(Icons.search, color: Color(0xFF8B3A3D), size: 28),
                                 const SizedBox(width: 16),
-                                // Увеличенная форма кнопки
                                 Container(
                                   width: 64,
                                   height: 40,
@@ -246,7 +299,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ),
 
-          // Плавный глобальный блюр для шторки
           IgnorePointer(
             ignoring: !_isBottomSheetOpen,
             child: TweenAnimationBuilder<double>(
@@ -279,6 +331,34 @@ class SommelierBottomSheet extends StatefulWidget {
 class _SommelierBottomSheetState extends State<SommelierBottomSheet> {
   double _sheetPosition = 0.45;
 
+  void _showRecipeDialog(BuildContext context, String product) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              const Icon(Icons.restaurant_menu, color: Color(0xFF8B3A3D)),
+              const SizedBox(width: 8),
+              Text('Рецепт: $product', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+            ],
+          ),
+          content: Text(
+            'ИИ-Сомелье рекомендует:\n\nИдеальное блюдо из категории "$product", которое подчеркнет ноты ежевики и перца в этом вине.',
+            style: const TextStyle(fontSize: 16, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Понятно', style: TextStyle(color: Color(0xFF8B3A3D), fontSize: 16)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isExpanded = _sheetPosition > 0.55;
@@ -293,7 +373,7 @@ class _SommelierBottomSheetState extends State<SommelierBottomSheet> {
       child: DraggableScrollableSheet(
         initialChildSize: 0.45,
         minChildSize: 0.45,
-        maxChildSize: 0.75,
+        maxChildSize: 0.85,
         expand: false,
         builder: (_, controller) {
           return Stack(
@@ -347,7 +427,14 @@ class _SommelierBottomSheetState extends State<SommelierBottomSheet> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(child: Text('Усадьба Дивноморское', style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.bold, height: 1.1))),
-                                  const Icon(Icons.favorite_border, color: Color(0xFF8B3A3D)),
+                                  IconButton(
+                                    icon: const Icon(Icons.ios_share, color: Color(0xFF8B3A3D)),
+                                    onPressed: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Ссылка на карточку скопирована')),
+                                      );
+                                    },
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 8),
@@ -355,7 +442,9 @@ class _SommelierBottomSheetState extends State<SommelierBottomSheet> {
                               const SizedBox(height: 16),
                               Row(
                                 children: [
-                                  const Text('💯 ', style: TextStyle(fontSize: 18)),
+                                  // Заменили эмодзи на иконку
+                                  const Icon(Icons.star, color: Color(0xFF8B3A3D), size: 20),
+                                  const SizedBox(width: 6),
                                   RichText(
                                     text: const TextSpan(
                                       style: TextStyle(color: Colors.black, fontSize: 16),
@@ -412,11 +501,12 @@ class _SommelierBottomSheetState extends State<SommelierBottomSheet> {
                         Expanded(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: const [
-                              _GastroIcon(Icons.set_meal_outlined, 'Мясо'),
-                              _GastroIcon(Icons.lunch_dining_outlined, 'Сыр'),
-                              _GastroIcon(Icons.local_florist_outlined, 'Фрукты'),
-                              _GastroIcon(Icons.restaurant_outlined, 'Птица'),
+                            children: [
+                              // Теперь здесь графические Asset-иконки, а не системные шрифты
+                              _GastroIcon('assets/meat.png', 'Мясо', onTap: () => _showRecipeDialog(context, 'Мясо')),
+                              _GastroIcon('assets/cheese.png', 'Сыр', onTap: () => _showRecipeDialog(context, 'Сыр')),
+                              _GastroIcon('assets/fruits.png', 'Фрукты', onTap: () => _showRecipeDialog(context, 'Фрукты')),
+                              _GastroIcon('assets/bird.png', 'Птица', onTap: () => _showRecipeDialog(context, 'Птица')),
                             ],
                           ),
                         ),
@@ -426,20 +516,45 @@ class _SommelierBottomSheetState extends State<SommelierBottomSheet> {
                     ),
                     const SizedBox(height: 32),
 
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Перейти к карточке вина', style: TextStyle(fontSize: 16)),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward, size: 18),
-                          ],
+                    Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Открывается карточка вина...')),
+                              );
+                            },
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text('Перейти к карточке вина', style: TextStyle(fontSize: 16)),
+                                SizedBox(width: 8),
+                                Icon(Icons.arrow_forward, size: 18),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Сканер для сравнения запущен')),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF8B3A3D), width: 1.5),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: const Text('Сравнить с другой бутылкой', style: TextStyle(fontSize: 16, color: Color(0xFF8B3A3D), fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
                     )
                   ],
                 ),
@@ -482,29 +597,42 @@ class _PaginationItem extends StatelessWidget {
 }
 
 class _GastroIcon extends StatelessWidget {
-  final IconData iconData;
+  final String imagePath; // Изменено с IconData/Emoji на путь к картинке
   final String label;
+  final VoidCallback onTap;
 
-  const _GastroIcon(this.iconData, this.label);
+  const _GastroIcon(this.imagePath, this.label, {required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 54,
-          height: 54,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFF8B3A3D), width: 1),
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF8B3A3D), width: 1),
+              color: Colors.transparent,
+            ),
+            // Отрисовка графического файла из assets (с защитой от ошибки, пока файлов нет)
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.fastfood, color: Color(0xFF8B3A3D), size: 24),
+              ),
+            ),
           ),
-          child: Icon(iconData, color: const Color(0xFF8B3A3D), size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF333333))),
-      ],
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF333333))),
+        ],
+      ),
     );
   }
 }
